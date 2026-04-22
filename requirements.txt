@@ -1,0 +1,14 @@
+yfinance
+finnhub-python
+polars
+numpy
+transformers
+torch
+scikit-learn
+statsmodels
+plotly.graph_objects
+pipeline
+pandas
+vectorbt
+plotly.express
+requests
