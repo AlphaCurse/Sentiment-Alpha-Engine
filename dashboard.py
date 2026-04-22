@@ -26,14 +26,13 @@ def get_latest_headline(symbol):
     except Exception:
         return f"No recent news found for {symbol}. Enter a headline manually."
 
-# Corrected Fetch Function
+# Fetch Function
 def fetch_auto_news(ticker, limit=50):
-    # Standard Alpha Vantage URL format: https://alphavantage.co...
     url = f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={ticker}&limit={limit}&apikey={ALPHA_VANTAGE_API_KEY}'
     r = requests.get(url)
     return r.json()
 
-# Corrected Trend Function
+# Trend Function
 @st.cache_data(ttl=600)
 def get_sentiment_trend_av(symbol, api_key):
     url = f'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={symbol}&limit=50&apikey={api_key}'
@@ -147,7 +146,7 @@ sentiment_pipe = load_model()
 ticker = st.sidebar.text_input("Stock Ticker", value="AAPL").upper()
 
 # 2. Dynamic Headline Fetching
-ALPHA_VANTAGE_API_KEY = "67U3KG9YDLA1ILZB"
+ALPHA_VANTAGE_API_KEY = st.secrets["ALPHA_VANTAGE_API_KEY"]
 trend_df = get_sentiment_trend_av(ticker, ALPHA_VANTAGE_API_KEY)
 
 if not trend_df.empty:
