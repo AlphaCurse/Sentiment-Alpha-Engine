@@ -20,7 +20,6 @@ def load_model():
 def get_latest_headline(symbol):
     try:
         t = yf.Ticker(symbol)
-        # Pull the most recent news item
         latest_news = t.news[0]
         return latest_news['title']
     except Exception:
@@ -47,11 +46,9 @@ def get_sentiment_trend_av(symbol, api_key):
             
         data_points = []
         for item in feed:
-            # Map Alpha Vantage fields
             data_points.append({
                 "Date": pd.to_datetime(item.get('time_published')),
                 "Headline": item.get('title'),
-                # AV uses overall_sentiment_score
                 "Sentiment Score": float(item.get('overall_sentiment_score', 0))
             })
         return pd.DataFrame(data_points)
@@ -76,7 +73,7 @@ def get_dynamic_sector_etf(symbol):
     try:
         t_info = yf.Ticker(symbol).info
         sector_name = t_info.get('sector', 'Unknown')
-        return SECTOR_MAP.get(sector_name, "SPY"), sector_name # Fallback to S&P 500
+        return SECTOR_MAP.get(sector_name, "SPY"), sector_name
     except:
         return "SPY", "Market"
 
@@ -88,8 +85,7 @@ def run_realtime_backtest(price_data, sentiment_df, threshold=0.3):
     entries = combined['Sentiment Score'] > threshold
     exits = combined['Sentiment Score'] < -threshold
     
-    # VectorBT Portfolio Execution
-        # 3. Create Signals
+    # Create Signals
     entries = news_copy['Sentiment Score'] > threshold
     exits = news_copy['Sentiment Score'] < 0
         
@@ -127,7 +123,7 @@ def create_sentiment_heatmap(news_df):
     # Sort days of the week logically
     day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     
-    # Create Pivot Table: Rows = Days, Columns = Hours, Values = Mean Sentiment
+    # Pivot Table: Rows = Days, Columns = Hours, Values = Mean Sentiment
     heatmap_data = df_copy.pivot_table(
         index='Day', 
         columns='Hour', 
@@ -201,7 +197,7 @@ if not data.empty:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-st.divider() # Adds a nice visual line between sections
+st.divider() 
 st.subheader(f"Recent Sentiment Trend: {ticker}")
 
 if not trend_df.empty:
@@ -229,9 +225,9 @@ st.divider()
 st.subheader("Alpha Signal Analysis")
 
 if not trend_df.empty:
-    avg_sentiment = trend_df['Sentiment Score'].head(3).mean() # Average of last 3 headlines
+    avg_sentiment = trend_df['Sentiment Score'].head(3).mean() 
     
-    # Simple Logic: Sentiment + Price Momentum
+    # Sentiment + Price Momentum
     if avg_sentiment > 0.2:
         signal = "🚀 BULLISH"
         color = "green"
@@ -276,7 +272,7 @@ st.subheader("Relative Sentiment: Stock vs. Dynamic Sector")
 # Get the dynamic ticker and sector name
 dynamic_etf, sector_display = get_dynamic_sector_etf(ticker)
 
-# Fetch the comparison scores
+# comparison scores
 sector_avg = get_sector_comparison(dynamic_etf)
 stock_avg = trend_df['Sentiment Score'].mean()
 
@@ -284,7 +280,7 @@ if not trend_df.empty:
     stock_avg = trend_df['Sentiment Score'].mean()
     sector_avg = get_sector_comparison(dynamic_etf)
 
-# UI Display
+# Display
 st.markdown(f"Benchmarking **{ticker}** against the **{sector_display}** sector (via {dynamic_etf}).")
 c1, c2 = st.columns(2)
 c1.metric(f"{ticker} Avg", f"{stock_avg:.2f}")
@@ -296,7 +292,7 @@ else:
     st.warning(f"{ticker} is lagging the **{sector_display}** sector narrative.")
 
 
-# Sidebar Controls for the Backtest
+# Backtest
 st.sidebar.markdown("---")
 st.sidebar.subheader("Backtest Performance Analysis")
 threshold = st.sidebar.slider("Sentiment Buy Threshold", 0.0, 1.0, 0.3)
@@ -315,7 +311,7 @@ if not trend_df.empty and not data.empty:
         # Create an index 
         full_index = pd.date_range(start=price_series.index.min(), end=news_df['Date'].max(), freq='D')
         
-        # 'Forward Fill' Friday's price into Saturday so the engine has a price to trade
+        # Friday's price into Saturday so the engine has a price to trade
         extended_prices = price_series.reindex(full_index, method='ffill')
         
         # Group news by day and align to the new timeline
@@ -336,7 +332,7 @@ if not trend_df.empty and not data.empty:
             upon_long_conflict='Entry'
         )
 
-        # 4. Display Results
+        # Results
         if len(pf.trades) > 0:
             c1, c2, c3 = st.columns(3)
             c1.metric("Total Return", f"{float(pf.total_return()):.2%}")
@@ -359,7 +355,6 @@ st.subheader(f"Sentiment Heatmap: {ticker} (By Hour/Day)")
 if not trend_df.empty:
     heatmap_df = create_sentiment_heatmap(trend_df)
     
-    # Use a simpler imshow call to avoid layout conflicts
     fig_heatmap = px.imshow(
         heatmap_df,
         labels=dict(x="Hour of Day (24h)", y="Day of Week", color="Sentiment"),
@@ -369,7 +364,6 @@ if not trend_df.empty:
         aspect="auto"
     )
     
-    # Update layout separately to ensure compatibility
     fig_heatmap.update_layout(
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
@@ -386,41 +380,38 @@ st.divider()
 st.subheader(f"News Sentiment vs. Trading Volume: {ticker}")
 
 if not trend_df.empty and not data.empty:
-    # 1. Standardize both to be timezone-naive
-    # Ensure volume index is clean
     daily_vol = data['Volume'].resample('D').mean()
     if daily_vol.index.tz is not None:
         daily_vol.index = daily_vol.index.tz_localize(None)
     
-    # Ensure sentiment index is clean
     daily_sent = trend_df.groupby(trend_df['Date'].dt.normalize())['Sentiment Score'].mean()
     if daily_sent.index.tz is not None:
         daily_sent.index = daily_sent.index.tz_localize(None)
     
-    # 2. Join the data now that they match
+    # Join the data now that they match
     corr_df = pd.DataFrame({
         'Volume': daily_vol,
         'Sentiment': daily_sent
     }).dropna()
 
     if not corr_df.empty:
-        # 2. Create a Dual-Axis Chart
+        # Dual-Axis Chart
         fig_corr = go.Figure()
 
-        # Add Volume Bar Chart
+        # Volume Bar Chart
         fig_corr.add_trace(go.Bar(
             x=corr_df.index, y=corr_df['Volume'],
             name="Trading Volume", marker_color='rgba(100, 100, 100, 0.3)',
             yaxis="y2"
         ))
 
-        # Add Sentiment Line Chart
+        # Sentiment Line Chart
         fig_corr.add_trace(go.Scatter(
             x=corr_df.index, y=corr_df['Sentiment'],
             name="Avg Sentiment", line=dict(color='#00FFCC', width=3)
         ))
 
-        # Setup Dual Axis Layout
+        # Dual Axis Layout
         fig_corr.update_layout(
             template="plotly_dark",
             yaxis=dict(title="Sentiment Score", range=[-1.1, 1.1]),
