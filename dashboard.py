@@ -275,23 +275,23 @@ if not trend_df.empty:
     top_movers = trend_df.sort_values(by="Sentiment Score", ascending=False)
     st.table(top_movers[['Date', 'Headline', 'Sentiment Score']].head(10))
 
-
-
 # --- Dynamic Sector Benchmarking ---
 st.subheader("Relative Sentiment: Stock vs. Dynamic Sector")
 
-# Get the dynamic ticker and sector name
-dynamic_etf, sector_name = get_dynamic_sector_etf(ticker)
-sector_avg = get_sector_comparison(dynamic_etf) 
-stock_avg = trend_df['Sentiment Score'].mean()
+# dynamic ticker and sector name
+dynamic_etf, sector_display = get_dynamic_sector_etf(ticker)
 
+# sentiment dataframe
 if not trend_df.empty and 'Sentiment Score' in trend_df.columns:
     stock_avg = trend_df['Sentiment Score'].mean()
 else:
     stock_avg = 0.0
     st.info("No sentiment data available for this ticker yet.")
 
-# Display
+# sector benchmarking
+sector_avg = get_sector_comparison(dynamic_etf) 
+
+# Display the metrics
 st.markdown(f"Benchmarking **{ticker}** against the **{sector_display}** sector (via {dynamic_etf}).")
 c1, c2 = st.columns(2)
 c1.metric(f"{ticker} Avg", f"{stock_avg:.2f}")
