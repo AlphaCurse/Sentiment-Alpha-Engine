@@ -8,6 +8,20 @@ import plotly.express as px
 import numpy as np
 import requests
 
+SECTOR_MAP = {
+    "Technology": "XLK",
+    "Financial Services": "XLF",
+    "Healthcare": "XLV",
+    "Consumer Cyclical": "XLY",
+    "Energy": "XLE",
+    "Industrials": "XLI",
+    "Consumer Defensive": "XLP",
+    "Utilities": "XLU",
+    "Real Estate": "XLRE",
+    "Basic Materials": "XLB",
+    "Communication Services": "XLC"
+}
+
 st.set_page_config(page_title="Sentiment Alpha Engine", layout="wide")
 st.title("📈 Sentiment Alpha Engine")
 
@@ -58,15 +72,24 @@ def get_sentiment_trend_av(symbol, api_key):
 
 @st.cache_data(ttl=600)
 def get_sector_comparison(symbol):
-    s_obj = yf.Ticker(symbol)
-    s_news = s_obj.news[:10]
-    scores = []
-    for n in s_news:
-        title = n.get('title') or n.get('content', {}).get('title')
-        if title:
-            res = sentiment_pipe(title)
-            scores.append(res[0]['score'] if res[0]['label'] == 'positive' else -res[0]['score'] if res[0]['label'] == 'negative' else 0)
-    return sum(scores) / len(scores) if scores else 0
+    try:
+        s_obj = yf.Ticker(symbol)
+        s_news = s_obj.news
+        if not s_news:
+            return 0.0
+            
+        scores = []
+        for n in s_news[:10]:
+            title = n.get('title')
+            if title:
+                res = sentiment_pipe(title)
+                s = res[0]['score']
+                scores.append(s if res[0]['label'] == 'positive' else -s if res[0]['label'] == 'negative' else 0)
+        
+        return sum(scores) / len(scores) if scores else 0.0
+    except Exception as e:
+        st.warning(f"Could not get sector sentiment for {symbol}")
+        return 0.0
 
 @st.cache_data(ttl=3600)
 def get_dynamic_sector_etf(symbol):
@@ -252,28 +275,14 @@ if not trend_df.empty:
     top_movers = trend_df.sort_values(by="Sentiment Score", ascending=False)
     st.table(top_movers[['Date', 'Headline', 'Sentiment Score']].head(10))
 
-SECTOR_MAP = {
-    "Technology": "XLK",
-    "Financial Services": "XLF",
-    "Healthcare": "XLV",
-    "Consumer Cyclical": "XLY",
-    "Energy": "XLE",
-    "Industrials": "XLI",
-    "Consumer Defensive": "XLP",
-    "Utilities": "XLU",
-    "Real Estate": "XLRE",
-    "Basic Materials": "XLB",
-    "Communication Services": "XLC"
-}
+
 
 # --- Dynamic Sector Benchmarking ---
 st.subheader("Relative Sentiment: Stock vs. Dynamic Sector")
 
 # Get the dynamic ticker and sector name
-dynamic_etf, sector_display = get_dynamic_sector_etf(ticker)
-
-# comparison scores
-sector_avg = get_sector_comparison(dynamic_etf)
+dynamic_etf, sector_name = get_dynamic_sector_etf(ticker)
+sector_avg = get_sector_comparison(dynamic_etf) 
 stock_avg = trend_df['Sentiment Score'].mean()
 
 if not trend_df.empty:
