@@ -285,9 +285,11 @@ dynamic_etf, sector_name = get_dynamic_sector_etf(ticker)
 sector_avg = get_sector_comparison(dynamic_etf) 
 stock_avg = trend_df['Sentiment Score'].mean()
 
-if not trend_df.empty:
+if not trend_df.empty and 'Sentiment Score' in trend_df.columns:
     stock_avg = trend_df['Sentiment Score'].mean()
-    sector_avg = get_sector_comparison(dynamic_etf)
+else:
+    stock_avg = 0.0
+    st.info("No sentiment data available for this ticker yet.")
 
 # Display
 st.markdown(f"Benchmarking **{ticker}** against the **{sector_display}** sector (via {dynamic_etf}).")
